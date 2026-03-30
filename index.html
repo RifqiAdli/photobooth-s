@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade Photobooth - Pro Edition</title>
+
+    <!-- SECTION: HEAD & CDN imports -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        arcade: {
+                            black: '#121212',
+                            gold: '#FFD700',
+                            goldDark: '#CCAC00',
+                            red: '#E50914',
+                            redDark: '#B20710',
+                            paper: '#F4F1EA'
+                        }
+                    },
+                    fontFamily: {
+                        playfair: ['"Playfair Display"', 'serif'],
+                        dmsans: ['"DM Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- SECTION: CSS custom -->
+    <style>
+        body {
+            background-color: #1a1a1a;
+            background-image: radial-gradient(#FFD700 1px, transparent 1px), radial-gradient(#FFD700 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            background-attachment: fixed;
+            color: #ffffff;
+            font-family: 'DM Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .font-title { font-family: 'Playfair Display', serif; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #FFD700; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #CCAC00; }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5) translate(-50%, -50%); }
+            50% { opacity: 1; transform: scale(1.2) translate(-50%, -50%); }
+            100% { opacity: 0; transform: scale(1) translate(-50%, -50%); }
+        }
+        
+        .animate-countdown {
+            animation: popIn 1s ease-in-out forwards;
+            transform-origin: top left;
+        }
+
+        .flash-active { opacity: 1 !important; transition: opacity 0.1s ease-out; }
+        .flash-fade { opacity: 0 !important; transition: opacity 0.8s ease-in; }
+
+        .filter-normal { filter: none; }
+        .filter-grayscale { filter: grayscale(100%); }
+        .filter-sepia { filter: sepia(100%); }
+        .filter-vivid { filter: saturate(200%) contrast(110%); }
+        .filter-noir { filter: grayscale(100%) contrast(150%) brightness(90%); }
+
+        /* Print CSS */
+        @media print {
+            body * { visibility: hidden; }
+            #print-target, #print-target * { visibility: visible; }
+            #print-target { 
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                display: flex; justify-content: center; align-items: center;
+                background-color: white !important; z-index: 99999; margin: 0; padding: 0;
+            }
+            #print-target img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: none !important; }
+            @page { margin: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- SECTION: HTML Structure -->
+    
+    <!-- Top Navigation -->
+    <header class="bg-arcade-black border-b-4 border-arcade-gold p-4 sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-4xl">🎟️</span>
+                <div>
+                    <h1 class="text-2xl md:text-3xl text-arcade-gold font-bold uppercase tracking-wider">Starcade Booth</h1>
+                    <p class="text-xs text-gray-400">Capture your retro moments</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-fullscreen" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded border border-gray-600 transition flex items-center gap-2 text-sm font-semibold">
+                    <span>📺</span> <span class="hidden sm:inline">Fullscreen</span>
+                </button>
+                <button id="btn-reset" class="px-3 py-2 bg-arcade-red hover:bg-arcade-redDark text-white rounded font-semibold transition flex items-center gap-2 text-sm">
+                    <span>♻️</span> <span class="hidden sm:inline">Reset Sesi</span>
+                </button>
+                <!-- TOMBOL KHUSUS ADMIN -->
+                <button id="btn-admin" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-arcade-gold rounded border border-arcade-gold transition flex items-center gap-2 text-sm font-bold" title="Pengaturan Admin">
+                    ⚙️
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- KIRI: Area Kamera & Kontrol -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Video Preview Container -->
+            <div class="relative bg-arcade-black rounded-xl border-4 border-arcade-gold shadow-[0_0_30px_rgba(255,215,0,0.3)] overflow-hidden aspect-video flex items-center justify-center group">
+                
+                <div id="camera-error" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-900 text-center p-6 hidden">
+                    <span class="text-5xl mb-4">📷🚫</span>
+                    <h3 class="text-xl font-bold text-arcade-red mb-2">Kamera Tidak Tersedia</h3>
+                    <p class="text-gray-400 mb-4 text-sm">Silakan izinkan akses kamera atau periksa pengaturan perangkat di menu Admin (⚙️).</p>
+                    <button id="btn-retry-camera" class="px-6 py-2 bg-arcade-gold text-arcade-black font-bold rounded-full hover:bg-yellow-500 transition">Coba Lagi</button>
+                </div>
+
+                <video id="video-feed" autoplay playsinline class="w-full h-full object-cover filter-normal"></video>
+                
+                <div id="camera-loading" class="absolute inset-0 flex items-center justify-center bg-black/80 z-10 hidden">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-arcade-gold border-t-transparent"></div>
+                </div>
+
+                <div id="live-frame-overlay" class="absolute inset-0 pointer-events-none z-10 transition-all duration-300"></div>
+
+                <div id="countdown-display" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[12rem] font-playfair font-black text-white opacity-0 pointer-events-none drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] z-30">
+                    3
+                </div>
+
+                <div id="flash-effect" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-40"></div>
+            </div>
+
+            <!-- Camera Controls & Options -->
+            <div class="bg-zinc-900 p-6 rounded-xl border border-zinc-700 shadow-xl space-y-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Filters -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-400 mb-2">Filter Visual</label>
+                        <select id="filter-select" class="w-full bg-black border border-zinc-600 rounded p-3 text-white focus:border-arcade-gold outline-none cursor-pointer">
+                            <option value="normal">Normal (Asli)</option>
+                            <option value="grayscale">Grayscale (Hitam Putih)</option>
+                            <option value="sepia">Sepia (Klasik)</option>
+                            <option value="vivid">Vivid (Saturasi Tinggi)</option>
+                            <option value="noir">Noir (Kontras Tinggi)</option>
+                        </select>
+                    </div>
+
+                    <!-- Frames -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-400 mb-2">Bingkai (Frame)</label>
+                        <select id="frame-select" class="w-full bg-black border border-zinc-600 rounded p-3 text-white focus:border-arcade-gold outline-none cursor-pointer">
+                            <option value="none">Tanpa Bingkai</option>
+                            <option value="custom" class="bg-zinc-800 text-arcade-gold font-bold">✨ Custom (Upload Admin)</option>
+                            <option value="classic">Classic (Polaroid)</option>
+                            <option value="vintage">Vintage (Cokelat & Grain)</option>
+                            <option value="neon">Neon (Glowing Border)</option>
+                            <option value="floral">Floral (Ornament Emoji)</option>
+                            <option value="minimal">Minimal (Garis Hitam)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Text & Sticker Overlay -->
+                <div class="p-4 bg-black rounded-lg border border-zinc-800">
+                    <h3 class="text-arcade-gold font-bold mb-3 border-b border-zinc-800 pb-2 text-sm">Teks & Stiker</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <input type="text" id="overlay-text" placeholder="Tulis sesuatu... (mis: Star Expo 2026)" class="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-white text-sm focus:border-arcade-gold outline-none">
+                        </div>
+                        <div>
+                            <select id="text-color" class="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-white text-sm focus:border-arcade-gold outline-none">
+                                <option value="#FFFFFF">Putih</option>
+                                <option value="#FFD700">Emas</option>
+                                <option value="#E50914">Merah</option>
+                                <option value="#000000">Hitam</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center gap-3">
+                        <span class="text-xs text-gray-500">Stiker:</span>
+                        <div class="flex gap-2" id="sticker-container">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="sticker" value="none" class="hidden peer" checked>
+                                <div class="w-8 h-8 flex items-center justify-center text-xl bg-zinc-800 rounded peer-checked:ring-2 peer-checked:ring-arcade-gold peer-checked:bg-zinc-700 transition">🚫</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="sticker" value="⭐" class="hidden peer">
+                                <div class="w-8 h-8 flex items-center justify-center text-xl bg-zinc-800 rounded peer-checked:ring-2 peer-checked:ring-arcade-gold peer-checked:bg-zinc-700 transition">⭐</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="sticker" value="👾" class="hidden peer">
+                                <div class="w-8 h-8 flex items-center justify-center text-xl bg-zinc-800 rounded peer-checked:ring-2 peer-checked:ring-arcade-gold peer-checked:bg-zinc-700 transition">👾</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="sticker" value="🔥" class="hidden peer">
+                                <div class="w-8 h-8 flex items-center justify-center text-xl bg-zinc-800 rounded peer-checked:ring-2 peer-checked:ring-arcade-gold peer-checked:bg-zinc-700 transition">🔥</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-2">
+                    <button id="btn-capture-single" class="flex-1 min-h-[60px] bg-arcade-gold hover:bg-yellow-400 text-black text-lg font-bold rounded-lg shadow-[0_4px_0_#B8860B] hover:translate-y-[2px] transition-all flex items-center justify-center gap-2">
+                        <span class="text-2xl">📸</span> Ambil 1 Foto
+                    </button>
+                    <button id="btn-capture-strip" class="flex-1 min-h-[60px] bg-arcade-red hover:bg-red-500 text-white text-lg font-bold rounded-lg shadow-[0_4px_0_#8B0000] hover:translate-y-[2px] transition-all flex items-center justify-center gap-2">
+                        <span class="text-2xl">🎞️</span> Mode Strip (3x)
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- KANAN: Area Galeri -->
+        <div class="lg:col-span-5 bg-zinc-900 rounded-xl border border-zinc-700 shadow-xl flex flex-col h-[600px] lg:h-auto overflow-hidden">
+            <div class="p-4 border-b border-zinc-700 bg-black flex justify-between items-center">
+                <h2 class="text-xl font-playfair text-arcade-gold font-bold">Galeri Sesi Ini</h2>
+                <span id="gallery-count" class="bg-zinc-800 px-3 py-1 rounded-full text-xs font-bold">0 Foto</span>
+            </div>
+            
+            <div id="gallery-container" class="p-4 flex-grow overflow-y-auto grid grid-cols-2 gap-4 content-start">
+                <div id="gallery-empty" class="col-span-2 flex flex-col items-center justify-center text-gray-500 h-full py-12">
+                    <span class="text-4xl mb-3 opacity-50">🎞️</span>
+                    <p>Belum ada foto.</p>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-zinc-700 bg-black">
+                <button id="btn-print-all" disabled class="w-full py-3 bg-zinc-800 text-gray-500 font-bold rounded cursor-not-allowed transition flex items-center justify-center gap-2">
+                    🖨️ Print Foto Terakhir
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden Canvas -->
+    <canvas id="capture-canvas" class="hidden"></canvas>
+    <canvas id="strip-canvas" class="hidden"></canvas>
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="fixed inset-0 bg-black/95 z-[100] hidden flex-col items-center justify-center p-4">
+        <button id="btn-close-modal" class="absolute top-6 right-6 text-white text-4xl hover:text-arcade-red transition">&times;</button>
+        <div class="max-w-4xl max-h-[80vh] relative">
+            <img id="preview-image" src="" alt="Preview" class="max-w-full max-h-[80vh] object-contain shadow-2xl border-4 border-white/10">
+        </div>
+        <div class="mt-6 flex gap-4">
+            <button id="modal-btn-download" class="px-6 py-3 bg-arcade-gold text-black font-bold rounded hover:bg-yellow-400">⬇️ Download</button>
+            <button id="modal-btn-print" class="px-6 py-3 bg-blue-600 text-white font-bold rounded hover:bg-blue-500">🖨️ Print Ini</button>
+        </div>
+    </div>
+
+    <!-- ADMIN MODAL -->
+    <div id="admin-modal" class="fixed inset-0 bg-black/95 z-[200] hidden flex-col items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-zinc-900 border-2 border-arcade-gold p-6 rounded-xl w-full max-w-lg shadow-[0_0_40px_rgba(255,215,0,0.2)]">
+            <div class="flex justify-between items-center mb-6 border-b border-zinc-700 pb-3">
+                <h2 class="text-2xl font-playfair text-arcade-gold font-bold">⚙️ Pengaturan Admin</h2>
+                <button id="btn-close-admin" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- Setting Kamera -->
+                <div class="bg-black p-4 rounded-lg border border-zinc-800">
+                    <label class="block text-sm font-semibold text-white mb-2">Pilih Perangkat Kamera</label>
+                    <select id="admin-camera-select" class="w-full bg-zinc-900 border border-zinc-700 rounded p-3 text-white focus:border-arcade-gold outline-none cursor-pointer">
+                        <option value="">Mencari kamera...</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-2">*Kamera yang dipilih akan disimpan otomatis untuk sesi berikutnya.</p>
+                </div>
+
+                <!-- Setting Custom Frame -->
+                <div class="bg-black p-4 rounded-lg border border-zinc-800">
+                    <label class="block text-sm font-semibold text-white mb-2">Upload Custom Frame (Overlay)</label>
+                    <input type="file" id="admin-frame-upload" accept="image/png" class="block w-full text-sm text-gray-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-arcade-gold file:text-black
+                        hover:file:bg-yellow-400 cursor-pointer">
+                    <p class="text-xs text-gray-500 mt-2">*Gunakan format PNG transparan (Rekomendasi ukuran: 1280x720px).</p>
+                    
+                    <!-- Preview Custom Frame -->
+                    <div id="admin-frame-preview-container" class="mt-4 hidden">
+                        <p class="text-xs text-arcade-gold mb-1">Preview Custom Frame:</p>
+                        <div class="w-full aspect-video bg-zinc-800 rounded border border-zinc-700 relative overflow-hidden" style="background-image: repeating-linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%, #333), repeating-linear-gradient(45deg, #333 25%, #222 25%, #222 75%, #333 75%, #333); background-position: 0 0, 10px 10px; background-size: 20px 20px;">
+                            <img id="admin-frame-img" src="" class="absolute inset-0 w-full h-full object-contain">
+                        </div>
+                        <button id="btn-remove-custom-frame" class="mt-2 text-xs text-red-500 hover:text-red-400 underline">Hapus Custom Frame</button>
+                    </div>
+                </div>
+
+                <!-- Setting Printer -->
+                <div class="bg-black p-4 rounded-lg border border-zinc-800">
+                    <label class="block text-sm font-semibold text-white mb-2">Pengaturan Print</label>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="admin-print-dialog" class="w-4 h-4 accent-yellow-400 cursor-pointer">
+                        <label for="admin-print-dialog" class="text-sm text-gray-300 cursor-pointer">Selalu tampilkan dialog pilih printer</label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">*Jika dicentang, setiap kali print akan muncul dialog untuk memilih printer yang diinginkan.</p>
+                    <div class="mt-3 flex items-center gap-2">
+                        <span class="text-xs text-gray-400">Ukuran kertas:</span>
+                        <select id="admin-paper-size" class="bg-zinc-900 border border-zinc-700 rounded p-1 text-white text-xs focus:border-arcade-gold outline-none">
+                            <option value="auto">Auto (Default)</option>
+                            <option value="A4">A4</option>
+                            <option value="A5">A5</option>
+                            <option value="2x6">2×6 inch (Strip)</option>
+                            <option value="4x6">4×6 inch (Foto)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button id="btn-save-admin" class="px-6 py-2 bg-arcade-gold text-black font-bold rounded-lg hover:bg-yellow-400 transition">Selesai</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Target -->
+    <div id="print-target" class="hidden">
+        <img id="print-image" src="" alt="Print Output">
+    </div>
+
+    <!-- SECTION: JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const videoEl = document.getElementById('video-feed');
+            const cameraLoading = document.getElementById('camera-loading');
+            const cameraError = document.getElementById('camera-error');
+            const btnRetryCamera = document.getElementById('btn-retry-camera');
+            
+            const filterSelect = document.getElementById('filter-select');
+            const frameSelect = document.getElementById('frame-select');
+            const overlayTextInput = document.getElementById('overlay-text');
+            const textColorSelect = document.getElementById('text-color');
+            const stickerRadios = document.getElementsByName('sticker');
+            const liveFrameOverlay = document.getElementById('live-frame-overlay');
+            
+            const btnSingle = document.getElementById('btn-capture-single');
+            const btnStrip = document.getElementById('btn-capture-strip');
+            const countdownEl = document.getElementById('countdown-display');
+            const flashEl = document.getElementById('flash-effect');
+            
+            const canvas = document.getElementById('capture-canvas');
+            const ctx = canvas.getContext('2d');
+            const stripCanvas = document.getElementById('strip-canvas');
+            const stripCtx = stripCanvas.getContext('2d');
+            
+            const galleryContainer = document.getElementById('gallery-container');
+            const galleryEmpty = document.getElementById('gallery-empty');
+            const galleryCount = document.getElementById('gallery-count');
+            const btnPrintAll = document.getElementById('btn-print-all');
+            
+            // Modals
+            const previewModal = document.getElementById('preview-modal');
+            const previewImage = document.getElementById('preview-image');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            
+            // Admin Elements
+            const btnAdmin = document.getElementById('btn-admin');
+            const adminModal = document.getElementById('admin-modal');
+            const btnCloseAdmin = document.getElementById('btn-close-admin');
+            const btnSaveAdmin = document.getElementById('btn-save-admin');
+            const adminCameraSelect = document.getElementById('admin-camera-select');
+            const adminFrameUpload = document.getElementById('admin-frame-upload');
+            const adminFramePreviewContainer = document.getElementById('admin-frame-preview-container');
+            const adminFrameImg = document.getElementById('admin-frame-img');
+            const btnRemoveCustomFrame = document.getElementById('btn-remove-custom-frame');
+            const adminPrintDialog = document.getElementById('admin-print-dialog');
+            const adminPaperSize = document.getElementById('admin-paper-size');
+
+            // Config
+            const ADMIN_PASSWORD = "admin";
+
+            // --- State ---
+            let currentStream = null;
+            let photos = []; 
+            let isCapturing = false;
+            let selectedPhotoUrl = null;
+            let customFrameDataUrl = null;
+            let customFrameImageObj = null; // HTMLImageElement, preloaded
+
+            // --- Init Application ---
+            function initApp() {
+                const savedCamera = localStorage.getItem('photobooth_cameraId');
+                startCamera(savedCamera);
+
+                // Load saved custom frame
+                const savedFrame = localStorage.getItem('photobooth_customFrame');
+                if (savedFrame) {
+                    setCustomFrame(savedFrame);
+                }
+
+                // Load print settings
+                const savedPrintDialog = localStorage.getItem('photobooth_printDialog');
+                if (savedPrintDialog === 'true') adminPrintDialog.checked = true;
+                const savedPaperSize = localStorage.getItem('photobooth_paperSize');
+                if (savedPaperSize) adminPaperSize.value = savedPaperSize;
+            }
+
+            // --- Camera Module ---
+            async function startCamera(deviceId = null) {
+                cameraLoading.classList.remove('hidden');
+                cameraError.classList.add('hidden');
+                
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+
+                const constraints = {
+                    video: deviceId 
+                        ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+                        : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+                    audio: false
+                };
+
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    videoEl.srcObject = currentStream;
+                    
+                    videoEl.onloadedmetadata = () => {
+                        cameraLoading.classList.add('hidden');
+                    };
+                    
+                    if (adminCameraSelect.options.length <= 1) {
+                        populateAdminCameras(deviceId);
+                    }
+                } catch (err) {
+                    console.error("Camera error:", err);
+                    cameraLoading.classList.add('hidden');
+                    cameraError.classList.remove('hidden');
+                    if (deviceId) {
+                        localStorage.removeItem('photobooth_cameraId');
+                        startCamera(null); 
+                    }
+                }
+            }
+
+            async function populateAdminCameras(selectedId) {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                    
+                    adminCameraSelect.innerHTML = '';
+                    
+                    if (videoDevices.length === 0) {
+                        adminCameraSelect.innerHTML = '<option value="">Tidak ada kamera terdeteksi</option>';
+                        return;
+                    }
+
+                    videoDevices.forEach((device, index) => {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        option.text = device.label || `Kamera ${index + 1}`;
+                        if (device.deviceId === selectedId) option.selected = true;
+                        adminCameraSelect.appendChild(option);
+                    });
+                } catch (err) {
+                    console.error("Error enumerating devices:", err);
+                }
+            }
+
+            btnRetryCamera.addEventListener('click', () => startCamera(localStorage.getItem('photobooth_cameraId')));
+
+            // --- Admin & Custom Frame Module ---
+            btnAdmin.addEventListener('click', () => {
+                const pass = prompt("Masukkan password admin:");
+                if (pass === ADMIN_PASSWORD) {
+                    adminModal.classList.remove('hidden');
+                    adminModal.classList.add('flex');
+                    if(adminCameraSelect.options.length <= 1) populateAdminCameras(localStorage.getItem('photobooth_cameraId'));
+                } else if (pass !== null) {
+                    alert("Password salah!");
+                }
+            });
+
+            const closeAdminPanel = () => {
+                // Save print settings on close
+                localStorage.setItem('photobooth_printDialog', adminPrintDialog.checked);
+                localStorage.setItem('photobooth_paperSize', adminPaperSize.value);
+                adminModal.classList.add('hidden');
+                adminModal.classList.remove('flex');
+            };
+
+            btnCloseAdmin.addEventListener('click', closeAdminPanel);
+            btnSaveAdmin.addEventListener('click', closeAdminPanel);
+
+            adminCameraSelect.addEventListener('change', (e) => {
+                const deviceId = e.target.value;
+                if (deviceId) {
+                    localStorage.setItem('photobooth_cameraId', deviceId);
+                    startCamera(deviceId);
+                }
+            });
+
+            // Upload Custom Frame
+            adminFrameUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const dataUrl = event.target.result;
+                        setCustomFrame(dataUrl);
+                        try {
+                            localStorage.setItem('photobooth_customFrame', dataUrl);
+                        } catch(err) {
+                            console.warn("Frame terlalu besar untuk localStorage.");
+                            alert("Peringatan: Ukuran file frame terlalu besar. Frame hanya akan tersimpan selama halaman ini tidak di-refresh.");
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            btnRemoveCustomFrame.addEventListener('click', () => {
+                customFrameDataUrl = null;
+                customFrameImageObj = null;
+                localStorage.removeItem('photobooth_customFrame');
+                adminFramePreviewContainer.classList.add('hidden');
+                adminFrameUpload.value = '';
+                
+                if (frameSelect.value === 'custom') {
+                    frameSelect.value = 'none';
+                    frameSelect.dispatchEvent(new Event('change'));
+                }
+                alert("Custom frame berhasil dihapus.");
+            });
+
+            // FIX 1: setCustomFrame now properly preloads the image and waits for it
+            function setCustomFrame(dataUrl) {
+                customFrameDataUrl = dataUrl;
+                const img = new Image();
+                img.onload = () => {
+                    customFrameImageObj = img; // Store the fully loaded image object
+                    adminFrameImg.src = dataUrl;
+                    adminFramePreviewContainer.classList.remove('hidden');
+                    
+                    // Update live UI if custom is currently selected
+                    if (frameSelect.value === 'custom') {
+                        frameSelect.dispatchEvent(new Event('change'));
+                    }
+                };
+                img.onerror = () => {
+                    console.error("Gagal memuat custom frame image.");
+                    alert("Gagal memuat frame. Pastikan file PNG valid.");
+                };
+                img.src = dataUrl;
+            }
+
+            // --- Filter & Frame UI (Main Interface) ---
+            filterSelect.addEventListener('change', (e) => {
+                videoEl.className = 'w-full h-full object-cover';
+                videoEl.classList.add(`filter-${e.target.value}`);
+            });
+
+            frameSelect.addEventListener('change', (e) => {
+                const frame = e.target.value;
+                liveFrameOverlay.className = 'absolute inset-0 pointer-events-none z-10 transition-all duration-300';
+                liveFrameOverlay.style.backgroundImage = 'none';
+                liveFrameOverlay.style.backgroundSize = '';
+                liveFrameOverlay.style.backgroundPosition = '';
+                liveFrameOverlay.style.backgroundRepeat = '';
+                
+                if (frame === 'custom') {
+                    if (customFrameDataUrl) {
+                        liveFrameOverlay.style.backgroundImage = `url(${customFrameDataUrl})`;
+                        liveFrameOverlay.style.backgroundSize = '100% 100%';
+                        liveFrameOverlay.style.backgroundPosition = 'center';
+                        liveFrameOverlay.style.backgroundRepeat = 'no-repeat';
+                    } else {
+                        alert("Belum ada custom frame. Silakan upload melalui menu Admin (⚙️).");
+                        frameSelect.value = 'none';
+                    }
+                } else if (frame === 'classic') {
+                    liveFrameOverlay.classList.add('border-[20px]', 'border-white', 'border-b-[80px]');
+                } else if (frame === 'vintage') {
+                    liveFrameOverlay.classList.add('bg-amber-900/20', 'border-[15px]', 'border-[#5c4033]');
+                } else if (frame === 'neon') {
+                    liveFrameOverlay.classList.add('border-[10px]', 'border-fuchsia-500', 'shadow-[inset_0_0_30px_#ff00ff,0_0_30px_#ff00ff]');
+                } else if (frame === 'minimal') {
+                    liveFrameOverlay.classList.add('border-[15px]', 'border-black');
+                } else if (frame === 'floral') {
+                    liveFrameOverlay.classList.add('border-8', 'border-pink-200/50');
+                }
+            });
+
+            // --- Capture Module ---
+            function playCountdown(seconds) {
+                return new Promise(resolve => {
+                    let counter = seconds;
+                    countdownEl.innerText = counter;
+                    countdownEl.classList.remove('opacity-0', 'animate-countdown');
+                    
+                    void countdownEl.offsetWidth;
+                    countdownEl.classList.add('animate-countdown');
+
+                    const interval = setInterval(() => {
+                        counter--;
+                        if (counter > 0) {
+                            countdownEl.innerText = counter;
+                            countdownEl.classList.remove('animate-countdown');
+                            void countdownEl.offsetWidth;
+                            countdownEl.classList.add('animate-countdown');
+                        } else {
+                            clearInterval(interval);
+                            countdownEl.classList.add('opacity-0');
+                            resolve();
+                        }
+                    }, 1000);
+                });
+            }
+
+            function triggerFlash() {
+                flashEl.classList.remove('flash-fade', 'hidden');
+                flashEl.classList.add('flash-active');
+                setTimeout(() => {
+                    flashEl.classList.remove('flash-active');
+                    flashEl.classList.add('flash-fade');
+                }, 50);
+            }
+
+            function getSelectedSticker() {
+                for (let radio of stickerRadios) {
+                    if (radio.checked && radio.value !== 'none') return radio.value;
+                }
+                return null;
+            }
+
+            // FIX 2: drawFrameOnCanvas now correctly uses the preloaded customFrameImageObj
+            function drawFrameOnCanvas(targetCtx, width, height, frameType) {
+                targetCtx.save();
+                if (frameType === 'custom') {
+                    if (customFrameImageObj && customFrameImageObj.complete && customFrameImageObj.naturalWidth > 0) {
+                        // Draw custom PNG frame overlay on top of the photo
+                        targetCtx.drawImage(customFrameImageObj, 0, 0, width, height);
+                    } else {
+                        console.warn("Custom frame image not ready or not loaded.");
+                    }
+                } else if (frameType === 'classic') {
+                    targetCtx.fillStyle = 'white';
+                    targetCtx.fillRect(0, 0, width, 20); 
+                    targetCtx.fillRect(0, 0, 20, height); 
+                    targetCtx.fillRect(width - 20, 0, 20, height); 
+                    targetCtx.fillRect(0, height - 100, width, 100); 
+                } else if (frameType === 'vintage') {
+                    targetCtx.fillStyle = 'rgba(92, 64, 51, 0.2)';
+                    targetCtx.fillRect(0, 0, width, height);
+                    targetCtx.strokeStyle = '#5c4033';
+                    targetCtx.lineWidth = 30;
+                    targetCtx.strokeRect(15, 15, width - 30, height - 30);
+                } else if (frameType === 'neon') {
+                    targetCtx.strokeStyle = '#ff00ff';
+                    targetCtx.lineWidth = 15;
+                    targetCtx.shadowBlur = 30;
+                    targetCtx.shadowColor = '#00ffff';
+                    targetCtx.strokeRect(20, 20, width - 40, height - 40);
+                } else if (frameType === 'minimal') {
+                    targetCtx.strokeStyle = '#000000';
+                    targetCtx.lineWidth = 30;
+                    targetCtx.strokeRect(15, 15, width - 30, height - 30);
+                } else if (frameType === 'floral') {
+                    targetCtx.font = '60px Arial';
+                    targetCtx.fillText('🌸', 20, 70);
+                    targetCtx.fillText('🌸', width - 80, 70);
+                    targetCtx.fillText('🌸', 20, height - 30);
+                    targetCtx.fillText('🌸', width - 80, height - 30);
+                    targetCtx.strokeStyle = 'rgba(255, 182, 193, 0.5)';
+                    targetCtx.lineWidth = 15;
+                    targetCtx.strokeRect(10, 10, width - 20, height - 20);
+                }
+                targetCtx.restore();
+            }
+
+            function processCanvas() {
+                canvas.width = videoEl.videoWidth || 1280;
+                canvas.height = videoEl.videoHeight || 720;
+                
+                // 1. Draw Video with Filter
+                const filter = filterSelect.value;
+                if (filter === 'grayscale') ctx.filter = 'grayscale(100%)';
+                else if (filter === 'sepia') ctx.filter = 'sepia(100%)';
+                else if (filter === 'vivid') ctx.filter = 'saturate(200%) contrast(110%)';
+                else if (filter === 'noir') ctx.filter = 'grayscale(100%) contrast(150%) brightness(90%)';
+                else ctx.filter = 'none';
+
+                ctx.save();
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1); // Mirror
+                ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+                
+                ctx.filter = 'none'; 
+
+                // 2. Draw Frame (on top of video)
+                const frameType = frameSelect.value;
+                drawFrameOnCanvas(ctx, canvas.width, canvas.height, frameType);
+
+                // 3. Draw Text
+                const text = overlayTextInput.value.trim();
+                if (text) {
+                    ctx.save();
+                    ctx.font = 'bold 48px "Playfair Display", serif';
+                    ctx.fillStyle = textColorSelect.value;
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    
+                    let yPos = canvas.height - 40;
+                    if (frameType === 'classic') {
+                        ctx.fillStyle = '#000000'; 
+                        ctx.shadowBlur = 0;
+                        yPos = canvas.height - 35;
+                    }
+                    ctx.fillText(text, canvas.width / 2, yPos);
+                    ctx.restore();
+                }
+
+                // 4. Draw Sticker
+                const sticker = getSelectedSticker();
+                if (sticker) {
+                    ctx.save();
+                    ctx.font = '80px Arial';
+                    ctx.fillText(sticker, canvas.width - 120, canvas.height - 120);
+                    ctx.restore();
+                }
+
+                return canvas.toDataURL('image/png');
+            }
+
+            async function captureSingle() {
+                if (isCapturing) return;
+                isCapturing = true;
+                setButtonsState(false);
+
+                await playCountdown(3);
+                triggerFlash();
+                
+                const dataUrl = processCanvas();
+                savePhoto(dataUrl);
+
+                isCapturing = false;
+                setButtonsState(true);
+            }
+
+            async function captureStrip() {
+                if (isCapturing) return;
+                isCapturing = true;
+                setButtonsState(false);
+
+                const stripFrames = [];
+                const stripCount = 3;
+
+                for (let i = 0; i < stripCount; i++) {
+                    await playCountdown(3);
+                    triggerFlash();
+                    stripFrames.push(processCanvas());
+                    
+                    if (i < stripCount - 1) {
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                }
+
+                compileStrip(stripFrames);
+
+                isCapturing = false;
+                setButtonsState(true);
+            }
+
+            function compileStrip(frameDataUrls) {
+                const img = new Image();
+                img.onload = () => {
+                    const padding = 40;
+                    const topPadding = 60;
+                    const bottomPadding = 120;
+                    const singleWidth = img.width;
+                    const singleHeight = img.height;
+                    
+                    stripCanvas.width = singleWidth + (padding * 2);
+                    stripCanvas.height = (singleHeight * 3) + (padding * 2) + topPadding + bottomPadding;
+
+                    stripCtx.fillStyle = '#F4F1EA'; 
+                    stripCtx.fillRect(0, 0, stripCanvas.width, stripCanvas.height);
+
+                    stripCtx.font = 'bold 50px "Playfair Display", serif';
+                    stripCtx.fillStyle = '#121212';
+                    stripCtx.textAlign = 'center';
+                    stripCtx.fillText('STARCADE BOOTH', stripCanvas.width / 2, topPadding - 10);
+
+                    let loadedCount = 0;
+                    const images = [];
+
+                    frameDataUrls.forEach((url, index) => {
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            images[index] = tempImg;
+                            loadedCount++;
+                            if (loadedCount === 3) {
+                                images.forEach((im, idx) => {
+                                    const y = topPadding + padding + (idx * (singleHeight + padding));
+                                    stripCtx.drawImage(im, padding, y, singleWidth, singleHeight);
+                                    
+                                    stripCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+                                    stripCtx.lineWidth = 2;
+                                    stripCtx.strokeRect(padding, y, singleWidth, singleHeight);
+                                });
+
+                                stripCtx.font = '30px "DM Sans", sans-serif';
+                                stripCtx.fillText(new Date().toLocaleDateString('id-ID'), stripCanvas.width / 2, stripCanvas.height - 50);
+
+                                savePhoto(stripCanvas.toDataURL('image/png'));
+                            }
+                        };
+                        tempImg.src = url;
+                    });
+                };
+                img.src = frameDataUrls[0];
+            }
+
+            function setButtonsState(enabled) {
+                btnSingle.disabled = !enabled;
+                btnStrip.disabled = !enabled;
+                if (!enabled) {
+                    btnSingle.classList.add('opacity-50', 'cursor-not-allowed');
+                    btnStrip.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    btnSingle.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btnStrip.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            btnSingle.addEventListener('click', captureSingle);
+            btnStrip.addEventListener('click', captureStrip);
+
+            // --- Gallery Module ---
+            function savePhoto(dataUrl) {
+                photos.unshift(dataUrl); 
+                updateGalleryUI();
+            }
+
+            function deletePhoto(index) {
+                if(confirm("Hapus foto ini dari galeri?")) {
+                    photos.splice(index, 1);
+                    updateGalleryUI();
+                }
+            }
+
+            function updateGalleryUI() {
+                galleryCount.innerText = `${photos.length} Foto`;
+                
+                if (photos.length === 0) {
+                    galleryEmpty.classList.remove('hidden');
+                    galleryContainer.innerHTML = '';
+                    galleryContainer.appendChild(galleryEmpty);
+                    
+                    btnPrintAll.disabled = true;
+                    btnPrintAll.classList.remove('bg-arcade-gold', 'text-black', 'hover:bg-yellow-400');
+                    btnPrintAll.classList.add('bg-zinc-800', 'text-gray-500', 'cursor-not-allowed');
+                    return;
+                }
+
+                galleryEmpty.classList.add('hidden');
+                galleryContainer.innerHTML = '';
+                
+                btnPrintAll.disabled = false;
+                btnPrintAll.classList.add('bg-arcade-gold', 'text-black', 'hover:bg-yellow-400');
+                btnPrintAll.classList.remove('bg-zinc-800', 'text-gray-500', 'cursor-not-allowed');
+
+                photos.forEach((photoUrl, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'relative group bg-zinc-800 rounded-lg overflow-hidden shadow-lg border border-zinc-700 cursor-pointer transition-transform hover:scale-105 aspect-[3/4] flex items-center justify-center';
+                    
+                    const img = document.createElement('img');
+                    img.src = photoUrl;
+                    img.className = 'w-full h-full object-cover';
+                    
+                    const overlay = document.createElement('div');
+                    overlay.className = 'absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 backdrop-blur-sm';
+                    
+                    const btnView = document.createElement('button');
+                    btnView.className = 'w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition';
+                    btnView.innerHTML = '👁️';
+                    btnView.title = 'Lihat Besar';
+                    btnView.onclick = (e) => { e.stopPropagation(); openModal(photoUrl); };
+
+                    const btnTrash = document.createElement('button');
+                    btnTrash.className = 'w-10 h-10 bg-arcade-red text-white rounded-full flex items-center justify-center hover:bg-red-600 transition';
+                    btnTrash.innerHTML = '🗑️';
+                    btnTrash.title = 'Hapus';
+                    btnTrash.onclick = (e) => { e.stopPropagation(); deletePhoto(index); };
+
+                    const rowActions = document.createElement('div');
+                    rowActions.className = 'flex gap-2';
+                    rowActions.appendChild(btnView);
+                    rowActions.appendChild(btnTrash);
+
+                    overlay.appendChild(rowActions);
+                    card.appendChild(img);
+                    card.appendChild(overlay);
+                    
+                    card.onclick = () => openModal(photoUrl);
+
+                    galleryContainer.appendChild(card);
+                });
+            }
+
+            // --- Modal & Utilities ---
+            function openModal(photoUrl) {
+                selectedPhotoUrl = photoUrl;
+                document.getElementById('preview-image').src = photoUrl;
+                previewModal.classList.remove('hidden');
+                previewModal.classList.add('flex');
+            }
+
+            btnCloseModal.addEventListener('click', () => {
+                previewModal.classList.add('hidden');
+                previewModal.classList.remove('flex');
+                selectedPhotoUrl = null;
+            });
+            
+            previewModal.addEventListener('click', (e) => {
+                if (e.target === previewModal) btnCloseModal.click();
+            });
+
+            document.getElementById('modal-btn-download').addEventListener('click', () => {
+                if (!selectedPhotoUrl) return;
+                const a = document.createElement('a');
+                a.href = selectedPhotoUrl;
+                a.download = `StarcadeBooth_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            document.getElementById('modal-btn-print').addEventListener('click', () => {
+                if (!selectedPhotoUrl) return;
+                executePrint(selectedPhotoUrl);
+            });
+
+            btnPrintAll.addEventListener('click', () => {
+                if (photos.length > 0) executePrint(photos[0]);
+            });
+
+            // FIX 3: executePrint now opens a new print window so user can choose printer
+            function executePrint(dataUrl) {
+                const paperSize = adminPaperSize ? adminPaperSize.value : 'auto';
+                
+                // Build page size CSS
+                let pageSizeCSS = '';
+                if (paperSize === 'A4') pageSizeCSS = '@page { size: A4; margin: 10mm; }';
+                else if (paperSize === 'A5') pageSizeCSS = '@page { size: A5; margin: 8mm; }';
+                else if (paperSize === '2x6') pageSizeCSS = '@page { size: 2in 6in; margin: 0; }';
+                else if (paperSize === '4x6') pageSizeCSS = '@page { size: 4in 6in; margin: 5mm; }';
+                else pageSizeCSS = '@page { margin: 10mm; }';
+
+                // Open new window for print - this triggers the browser's native print dialog
+                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                if (!printWindow) {
+                    // Fallback jika popup diblokir
+                    alert("Popup diblokir oleh browser. Menggunakan metode print alternatif...");
+                    const printImage = document.getElementById('print-image');
+                    const printTarget = document.getElementById('print-target');
+                    printImage.src = dataUrl;
+                    printImage.onload = () => {
+                        printTarget.classList.remove('hidden');
+                        setTimeout(() => {
+                            window.print();
+                            setTimeout(() => printTarget.classList.add('hidden'), 1000);
+                        }, 300);
+                    };
+                    return;
+                }
+
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Starcade Booth - Print</title>
+                        <style>
+                            ${pageSizeCSS}
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body {
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                background: white;
+                            }
+                            img {
+                                max-width: 100%;
+                                max-height: 100vh;
+                                object-fit: contain;
+                                display: block;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <img src="${dataUrl}" onload="window.print(); setTimeout(() => window.close(), 500);">
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            }
+
+            document.getElementById('btn-fullscreen').addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Gagal fullscreen: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                if(confirm("Apakah Anda yakin ingin mereset sesi? Semua foto di galeri akan terhapus.")) {
+                    photos = [];
+                    updateGalleryUI();
+                    overlayTextInput.value = '';
+                    filterSelect.value = 'normal';
+                    frameSelect.value = 'none';
+                    filterSelect.dispatchEvent(new Event('change'));
+                    frameSelect.dispatchEvent(new Event('change'));
+                    stickerRadios[0].checked = true; 
+                }
+            });
+
+            // Start initialization
+            initApp();
+        });
+    </script>
+</body>
+</html>
